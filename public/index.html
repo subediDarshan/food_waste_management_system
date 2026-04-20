@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FoodShare · Login</title>
+  <link rel="stylesheet" href="/css/styles.css" />
+</head>
+<body>
+  <div class="auth-wrapper">
+    <div class="auth-card">
+      <h1>FoodShare</h1>
+      <p class="subtitle">Reduce food waste — donate &amp; claim with ease</p>
+
+      <div class="tabs">
+        <button id="tabLogin" class="active">Login</button>
+        <button id="tabSignup">Sign up</button>
+      </div>
+
+      <div id="alertBox"></div>
+
+      <form id="loginForm">
+        <div class="field">
+          <label>Email</label>
+          <input type="email" name="email" required />
+        </div>
+        <div class="field">
+          <label>Password</label>
+          <input type="password" name="password" required minlength="4" />
+        </div>
+        <button type="submit" style="width:100%">Login</button>
+      </form>
+
+      <form id="signupForm" style="display:none">
+        <div class="field">
+          <label>Name</label>
+          <input type="text" name="name" required />
+        </div>
+        <div class="field">
+          <label>Email</label>
+          <input type="email" name="email" required />
+        </div>
+        <div class="field">
+          <label>Password</label>
+          <input type="password" name="password" required minlength="4" />
+        </div>
+        <div class="field">
+          <label>Role</label>
+          <select name="role" required>
+            <option value="donor">Donor (donate food)</option>
+            <option value="ngo">NGO (claim food)</option>
+          </select>
+        </div>
+        <button type="submit" style="width:100%">Create account</button>
+      </form>
+    </div>
+  </div>
+
+  <script src="/js/common.js"></script>
+  <script>
+    const tabLogin = document.getElementById('tabLogin');
+    const tabSignup = document.getElementById('tabSignup');
+    const loginForm = document.getElementById('loginForm');
+    const signupForm = document.getElementById('signupForm');
+    const alertBox = document.getElementById('alertBox');
+
+    tabLogin.onclick = () => {
+      tabLogin.classList.add('active');
+      tabSignup.classList.remove('active');
+      loginForm.style.display = '';
+      signupForm.style.display = 'none';
+      alertBox.innerHTML = '';
+    };
+    tabSignup.onclick = () => {
+      tabSignup.classList.add('active');
+      tabLogin.classList.remove('active');
+      signupForm.style.display = '';
+      loginForm.style.display = 'none';
+      alertBox.innerHTML = '';
+    };
+
+    function redirect(role) {
+      window.location.href = role === 'donor' ? '/donor-dashboard.html' : '/ngo-dashboard.html';
+    }
+
+    loginForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const fd = new FormData(loginForm);
+      try {
+        const me = await api('/api/auth/login', {
+          method: 'POST',
+          body: { email: fd.get('email'), password: fd.get('password') }
+        });
+        redirect(me.role);
+      } catch (err) {
+        showAlert(alertBox, 'error', err.message);
+      }
+    });
+
+    signupForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const fd = new FormData(signupForm);
+      try {
+        const me = await api('/api/auth/signup', {
+          method: 'POST',
+          body: {
+            name: fd.get('name'),
+            email: fd.get('email'),
+            password: fd.get('password'),
+            role: fd.get('role')
+          }
+        });
+        redirect(me.role);
+      } catch (err) {
+        showAlert(alertBox, 'error', err.message);
+      }
+    });
+
+    // Auto-redirect if already logged in
+    api('/api/auth/me').then((me) => redirect(me.role)).catch(() => {});
+  </script>
+</body>
+</html>

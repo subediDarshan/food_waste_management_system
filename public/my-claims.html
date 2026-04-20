@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>My Claims · FoodShare</title>
+  <link rel="stylesheet" href="/css/styles.css" />
+</head>
+<body>
+  <div class="container">
+    <h2>My Claim History</h2>
+    <div id="claimsContainer"></div>
+  </div>
+
+  <script src="/js/common.js"></script>
+  <script>
+    (async () => {
+      const me = await requireAuthRole('ngo');
+      if (!me) return;
+      renderNavbar(me, '/my-claims.html');
+
+      const claims = await api('/api/claims/mine');
+      const c = document.getElementById('claimsContainer');
+      if (!claims.length) {
+        c.innerHTML = '<div class="card"><div class="empty">No claims yet. Browse available food to claim!</div></div>';
+        return;
+      }
+
+      c.innerHTML = `<table>
+        <thead><tr>
+          <th>Food</th><th>Qty</th><th>Location</th><th>Expires</th><th>Requested</th><th>Status</th>
+        </tr></thead>
+        <tbody>${claims.map(cl => {
+          const f = cl.foodId || {};
+          return `<tr>
+            <td><strong>${f.title || '[deleted]'}</strong></td>
+            <td>${f.quantity || '—'}</td>
+            <td>${f.location || '—'}</td>
+            <td class="${f.expiryTime ? expiryClass(f.expiryTime) : ''}">${fmtDate(f.expiryTime)}</td>
+            <td class="muted">${fmtDate(cl.createdAt)}</td>
+            <td><span class="badge ${cl.claimStatus}">${cl.claimStatus}</span></td>
+          </tr>`;
+        }).join('')}</tbody>
+      </table>`;
+    })();
+  </script>
+</body>
+</html>

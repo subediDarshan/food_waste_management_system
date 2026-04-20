@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Add Food · FoodShare</title>
+  <link rel="stylesheet" href="/css/styles.css" />
+</head>
+<body>
+  <div class="container">
+    <h2>Add a Food Listing</h2>
+    <div class="card" style="max-width:560px">
+      <div id="alertBox"></div>
+      <form id="foodForm">
+        <div class="field">
+          <label>Title</label>
+          <input type="text" name="title" required placeholder="e.g. Cooked rice (50 servings)" />
+        </div>
+        <div class="field">
+          <label>Quantity (servings / units)</label>
+          <input type="number" name="quantity" required min="1" />
+        </div>
+        <div class="field">
+          <label>Expiry Date &amp; Time</label>
+          <input type="datetime-local" name="expiryTime" required />
+        </div>
+        <div class="field">
+          <label>Pickup Location</label>
+          <input type="text" name="location" required placeholder="e.g. Andheri, Mumbai" />
+        </div>
+        <button type="submit">Create Listing</button>
+        <a href="/my-listings.html" class="btn btn-outline" style="margin-left:8px">Cancel</a>
+      </form>
+    </div>
+  </div>
+
+  <script src="/js/common.js"></script>
+  <script>
+    (async () => {
+      const me = await requireAuthRole('donor');
+      if (!me) return;
+      renderNavbar(me, '/add-food.html');
+
+      const form = document.getElementById('foodForm');
+      const alertBox = document.getElementById('alertBox');
+
+      // Default expiry = 24 hours from now
+      const def = new Date(Date.now() + 24 * 3600 * 1000);
+      def.setSeconds(0, 0);
+      form.expiryTime.value = def.toISOString().slice(0, 16);
+
+      form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const fd = new FormData(form);
+        try {
+          await api('/api/food', {
+            method: 'POST',
+            body: {
+              title: fd.get('title'),
+              quantity: Number(fd.get('quantity')),
+              expiryTime: new Date(fd.get('expiryTime')).toISOString(),
+              location: fd.get('location')
+            }
+          });
+          showAlert(alertBox, 'success', 'Listing created!');
+          setTimeout(() => (window.location.href = '/my-listings.html'), 800);
+        } catch (err) {
+          showAlert(alertBox, 'error', err.message);
+        }
+      });
+    })();
+  </script>
+</body>
+</html>

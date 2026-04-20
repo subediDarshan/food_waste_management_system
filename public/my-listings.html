@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>My Listings · FoodShare</title>
+  <link rel="stylesheet" href="/css/styles.css" />
+</head>
+<body>
+  <div class="container">
+    <div class="section-header">
+      <h2>My Food Listings</h2>
+      <div>
+        <button id="expireBtn" class="btn-outline">Run Expire Sweep</button>
+        <a href="/add-food.html" class="btn">+ Add Food</a>
+      </div>
+    </div>
+    <div id="alertBox"></div>
+    <div id="listingsContainer"></div>
+  </div>
+
+  <script src="/js/common.js"></script>
+  <script>
+    let me;
+
+    function renderRow(f) {
+      return `<tr>
+        <td><strong>${f.title}</strong></td>
+        <td>${f.quantity}</td>
+        <td>${f.location}</td>
+        <td class="${expiryClass(f.expiryTime)}">${fmtDate(f.expiryTime)}</td>
+        <td><span class="badge ${f.status}">${f.status}</span></td>
+        <td class="actions">
+          <button class="btn-sm btn-danger" data-del="${f._id}">Delete</button>
+        </td>
+      </tr>`;
+    }
+
+    async function load() {
+      const items = await api('/api/food/mine');
+      const container = document.getElementById('listingsContainer');
+      if (!items.length) {
+        container.innerHTML = '<div class="card"><div class="empty">No listings yet. Add your first food listing!</div></div>';
+        return;
+      }
+      container.innerHTML = `<table>
+        <thead><tr>
+          <th>Title</th><th>Qty</th><th>Location</th><th>Expires</th><th>Status</th><th>Actions</th>
+        </tr></thead>
+        <tbody>${items.map(renderRow).join('')}</tbody>
+      </table>`;
+
+      container.querySelectorAll('[data-del]').forEach((btn) => {
+        btn.onclick = async () => {
+          if (!confirm('Delete this listing?')) return;
+          try {
+            await api('/api/food/' + btn.dataset.del, { method: 'DELETE' });
+            load();
+          } catch (err) {
+            showAlert(document.getElementById('alertBox'), 'error', err.message);
+          }
+        };
+      });
+    }
+
+    (async () => {
+      me = await requireAuthRole('donor');
+      if (!me) return;
+      renderNavbar(me, '/my-listings.html');
+
+      document.getElementById('expireBtn').onclick = async () => {
+        try {
+          const r = await api('/api/food/maintenance/expire', { method: 'POST' });
+          showAlert(
+            document.getElementById('alertBox'),
+            'info',
+            `updateMany() ran — matched: ${r.matched}, modified: ${r.modified}`
+          );
+          load();
+        } catch (err) {
+          showAlert(document.getElementById('alertBox'), 'error', err.message);
+        }
+      };
+
+      load();
+    })();
+  </script>
+</body>
+</html>

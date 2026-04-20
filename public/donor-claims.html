@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Claims · FoodShare</title>
+  <link rel="stylesheet" href="/css/styles.css" />
+</head>
+<body>
+  <div class="container">
+    <h2>Claims on My Listings</h2>
+    <div id="alertBox"></div>
+    <div id="claimsContainer"></div>
+  </div>
+
+  <script src="/js/common.js"></script>
+  <script>
+    async function load() {
+      const claims = await api('/api/claims/for-my-listings');
+      const c = document.getElementById('claimsContainer');
+      if (!claims.length) {
+        c.innerHTML = '<div class="card"><div class="empty">No claims yet on your listings.</div></div>';
+        return;
+      }
+      c.innerHTML = `<table>
+        <thead><tr>
+          <th>Food</th><th>Location</th><th>NGO</th><th>Requested</th><th>Status</th><th>Actions</th>
+        </tr></thead>
+        <tbody>${claims.map((cl) => {
+          const f = cl.foodId || {};
+          const ngo = cl.NGOId || {};
+          return `<tr>
+            <td><strong>${f.title || '—'}</strong><div class="muted">qty: ${f.quantity || '—'}</div></td>
+            <td>${f.location || '—'}</td>
+            <td>${ngo.name || '—'}<div class="muted">${ngo.email || ''}</div></td>
+            <td>${fmtDate(cl.createdAt)}</td>
+            <td><span class="badge ${cl.claimStatus}">${cl.claimStatus}</span></td>
+            <td class="actions">
+              ${cl.claimStatus === 'pending' ? `
+                <button class="btn-sm" data-approve="${cl._id}">Approve</button>
+                <button class="btn-sm btn-danger" data-reject="${cl._id}">Reject</button>
+              ` : '—'}
+            </td>
+          </tr>`;
+        }).join('')}</tbody>
+      </table>`;
+
+      c.querySelectorAll('[data-approve]').forEach((b) => {
+        b.onclick = async () => {
+          try {
+            await api('/api/claims/' + b.dataset.approve, {
+              method: 'PUT',
+              body: { claimStatus: 'approved' }
+            });
+            load();
+          } catch (err) {
+            showAlert(document.getElementById('alertBox'), 'error', err.message);
+          }
+        };
+      });
+      c.querySelectorAll('[data-reject]').forEach((b) => {
+        b.onclick = async () => {
+          try {
+            await api('/api/claims/' + b.dataset.reject, {
+              method: 'PUT',
+              body: { claimStatus: 'rejected' }
+            });
+            load();
+          } catch (err) {
+            showAlert(document.getElementById('alertBox'), 'error', err.message);
+          }
+        };
+      });
+    }
+
+    (async () => {
+      const me = await requireAuthRole('donor');
+      if (!me) return;
+      renderNavbar(me, '/donor-claims.html');
+      load();
+    })();
+  </script>
+</body>
+</html>

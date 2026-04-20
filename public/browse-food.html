@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Browse Food · FoodShare</title>
+  <link rel="stylesheet" href="/css/styles.css" />
+</head>
+<body>
+  <div class="container">
+    <h2>Browse Available Food</h2>
+
+    <div class="card">
+      <h3>Filters</h3>
+      <p class="muted" style="margin-bottom:12px">
+        Filter by one or more locations, minimum quantity, expiry window, or status — sorted by soonest
+        expiry first, with pagination.
+      </p>
+      <div class="filter-bar">
+        <div class="field">
+          <label>Locations (comma-separated for multiple)</label>
+          <input type="text" id="fLocations" placeholder="Mumbai, Pune" />
+        </div>
+        <div class="field">
+          <label>Min Quantity</label>
+          <input type="number" id="fMinQty" min="1" />
+        </div>
+        <div class="field">
+          <label>Expires within (hours)</label>
+          <input type="number" id="fHours" min="1" placeholder="e.g. 24" />
+        </div>
+        <div class="field">
+          <label>Status</label>
+          <select id="fStatuses">
+            <option value="available">Available</option>
+            <option value="claimed">Claimed</option>
+            <option value="available,claimed,expired">All</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Page size</label>
+          <select id="fLimit">
+            <option>5</option>
+            <option selected>10</option>
+            <option>20</option>
+          </select>
+        </div>
+      </div>
+      <button id="applyBtn">Apply Filters</button>
+      <button id="clearBtn" class="btn-outline" style="margin-left:8px">Clear</button>
+    </div>
+
+    <div id="alertBox"></div>
+    <div id="results"></div>
+    <div id="pagination" class="pagination"></div>
+  </div>
+
+  <script src="/js/common.js"></script>
+  <script>
+    let page = 1;
+
+    function buildQuery() {
+      const params = new URLSearchParams();
+      const locs = document.getElementById('fLocations').value.trim();
+      const qty = document.getElementById('fMinQty').value;
+      const hrs = document.getElementById('fHours').value;
+      const sts = document.getElementById('fStatuses').value.trim();
+      const lim = document.getElementById('fLimit').value;
+
+      if (locs) params.set('locations', locs);
+      if (qty) params.set('minQuantity', qty);
+      if (hrs) params.set('maxExpiryHours', hrs);
+      if (sts) params.set('statuses', sts);
+      params.set('limit', lim);
+      params.set('page', page);
+      return params.toString();
+    }
+
+    async function load() {
+      const q = buildQuery();
+      const data = await api('/api/food/browse?' + q);
+      const r = document.getElementById('results');
+
+      if (!data.items.length) {
+        r.innerHTML = '<div class="card"><div class="empty">No food matches your filters.</div></div>';
+      } else {
+        r.innerHTML = `<table>
+          <thead><tr>
+            <th>Title</th><th>Qty</th><th>Location</th><th>Donor</th>
+            <th>Expires</th><th>Status</th><th></th>
+          </tr></thead>
+          <tbody>${data.items.map((f) => `
+            <tr>
+              <td><strong>${f.title}</strong></td>
+              <td>${f.quantity}</td>
+              <td>${f.location}</td>
+              <td>${(f.createdBy && f.createdBy.name) || '—'}</td>
+              <td class="${expiryClass(f.expiryTime)}">${fmtDate(f.expiryTime)}</td>
+              <td><span class="badge ${f.status}">${f.status}</span></td>
+              <td>${f.status === 'available'
+                ? `<button class="btn-sm" data-claim="${f._id}">Claim</button>`
+                : '—'}</td>
+            </tr>`).join('')}</tbody>
+        </table>`;
+
+        r.querySelectorAll('[data-claim]').forEach((b) => {
+          b.onclick = async () => {
+            try {
+              await api('/api/claims', {
+                method: 'POST',
+                body: { foodId: b.dataset.claim }
+              });
+              showAlert(document.getElementById('alertBox'), 'success', 'Claim submitted! Awaiting donor approval.');
+              load();
+            } catch (err) {
+              showAlert(document.getElementById('alertBox'), 'error', err.message);
+            }
+          };
+        });
+      }
+
+      // pagination
+      const totalPages = Math.max(1, Math.ceil(data.total / data.limit));
+      const pag = document.getElementById('pagination');
+      pag.innerHTML = `
+        <button ${page <= 1 ? 'disabled' : ''} id="prevPg">← Prev</button>
+        <span style="padding:6px 12px">Page ${page} of ${totalPages} (${data.total} total)</span>
+        <button ${page >= totalPages ? 'disabled' : ''} id="nextPg">Next →</button>
+      `;
+      const prev = document.getElementById('prevPg');
+      const next = document.getElementById('nextPg');
+      if (prev && !prev.disabled) prev.onclick = () => { page--; load(); };
+      if (next && !next.disabled) next.onclick = () => { page++; load(); };
+    }
+
+    (async () => {
+      const me = await requireAuthRole('ngo');
+      if (!me) return;
+      renderNavbar(me, '/browse-food.html');
+
+      document.getElementById('applyBtn').onclick = () => { page = 1; load(); };
+      document.getElementById('clearBtn').onclick = () => {
+        ['fLocations', 'fMinQty', 'fHours'].forEach(id => {
+          document.getElementById(id).value = '';
+        });
+        document.getElementById('fStatuses').value = 'available';
+        page = 1;
+        load();
+      };
+
+      load();
+    })();
+  </script>
+</body>
+</html>

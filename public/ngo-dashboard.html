@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>NGO Dashboard · FoodShare</title>
+  <link rel="stylesheet" href="/css/styles.css" />
+</head>
+<body>
+  <div class="container">
+    <h2>NGO Dashboard</h2>
+    <div id="stats" class="grid grid-4"></div>
+
+    <div class="card" style="margin-top:24px">
+      <div class="section-header">
+        <h3>Recently added food</h3>
+        <a href="/browse-food.html" class="btn btn-sm">Browse all →</a>
+      </div>
+      <div id="recentList"></div>
+    </div>
+  </div>
+
+  <script src="/js/common.js"></script>
+  <script>
+    (async () => {
+      const me = await requireAuthRole('ngo');
+      if (!me) return;
+      renderNavbar(me, '/ngo-dashboard.html');
+
+      const data = await api('/api/analytics/ngo');
+      document.getElementById('stats').innerHTML = `
+        <div class="stat success"><div class="label">Available Now</div><div class="value">${data.availableCount}</div></div>
+        <div class="stat"><div class="label">My Active Claims</div><div class="value">${data.claimedByMe}</div></div>
+        <div class="stat warn"><div class="label">Pending</div><div class="value">${data.pendingClaims}</div></div>
+        <div class="stat success"><div class="label">Approved</div><div class="value">${data.approvedClaims}</div></div>
+      `;
+
+      const list = document.getElementById('recentList');
+      if (!data.recent.length) {
+        list.innerHTML = '<div class="empty">No food listings available right now.</div>';
+      } else {
+        list.innerHTML = `<table>
+          <thead><tr><th>Title</th><th>Quantity</th><th>Location</th><th>Expires</th><th>Posted</th></tr></thead>
+          <tbody>${data.recent.map(f => `
+            <tr>
+              <td>${f.title}</td>
+              <td>${f.quantity}</td>
+              <td>${f.location}</td>
+              <td class="${expiryClass(f.expiryTime)}">${fmtDate(f.expiryTime)}</td>
+              <td class="muted">${fmtDate(f.createdAt)}</td>
+            </tr>`).join('')}
+          </tbody>
+        </table>`;
+      }
+    })();
+  </script>
+</body>
+</html>

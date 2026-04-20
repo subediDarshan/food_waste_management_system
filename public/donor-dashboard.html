@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Donor Dashboard · FoodShare</title>
+  <link rel="stylesheet" href="/css/styles.css" />
+</head>
+<body>
+  <div class="container">
+    <h2>Donor Dashboard</h2>
+    <div id="stats" class="grid grid-4"></div>
+
+    <div class="card" style="margin-top:24px">
+      <div class="section-header">
+        <h3>Expiring soon (next 24 h)</h3>
+        <a href="/add-food.html" class="btn btn-sm">+ Add food</a>
+      </div>
+      <div id="expiringList"></div>
+    </div>
+  </div>
+
+  <script src="/js/common.js"></script>
+  <script>
+    (async () => {
+      const me = await requireAuthRole('donor');
+      if (!me) return;
+      renderNavbar(me, '/donor-dashboard.html');
+
+      const data = await api('/api/analytics/donor');
+      document.getElementById('stats').innerHTML = `
+        <div class="stat"><div class="label">Total Listings</div><div class="value">${data.total}</div></div>
+        <div class="stat success"><div class="label">Active (Available)</div><div class="value">${data.active}</div></div>
+        <div class="stat"><div class="label">Claimed</div><div class="value">${data.claimed}</div></div>
+        <div class="stat warn"><div class="label">Expiring Soon</div><div class="value">${data.expiringSoon}</div></div>
+      `;
+
+      const list = document.getElementById('expiringList');
+      if (!data.expiringList.length) {
+        list.innerHTML = '<div class="empty">No listings expiring in the next 24 hours.</div>';
+      } else {
+        list.innerHTML = `<table>
+          <thead><tr><th>Title</th><th>Quantity</th><th>Location</th><th>Expires</th></tr></thead>
+          <tbody>${data.expiringList.map(f => `
+            <tr>
+              <td>${f.title}</td>
+              <td>${f.quantity}</td>
+              <td>${f.location}</td>
+              <td class="${expiryClass(f.expiryTime)}">${fmtDate(f.expiryTime)}</td>
+            </tr>`).join('')}
+          </tbody>
+        </table>`;
+      }
+    })();
+  </script>
+</body>
+</html>
