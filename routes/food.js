@@ -5,7 +5,7 @@ const { requireAuth, requireRole } = require('../middleware/auth');
 
 const router = express.Router();
 
-// CREATE — Donor adds a food listing
+// CREATE - Donor adds a food listing
 router.post('/', requireRole('donor'), async (req, res) => {
   try {
     const { title, quantity, expiryTime, location } = req.body;
@@ -26,23 +26,20 @@ router.post('/', requireRole('donor'), async (req, res) => {
   }
 });
 
-// READ — Browse available food (NGO view) with filters, projection, sorting, pagination
+// READ - Browse available food (NGO view) with filters, projection, sorting, pagination
 router.get('/browse', requireRole('ngo'), async (req, res) => {
   try {
     const { location, locations, minQuantity, maxExpiryHours, statuses, page = 1, limit = 10 } = req.query;
 
-    // Build filter: AND conditions, OR with multiple locations, IN with multiple statuses
     const filter = {};
 
     if (statuses) {
-      // IN operator — multiple statuses
       filter.status = { $in: statuses.split(',') };
     } else {
       filter.status = 'available';
     }
 
     if (locations) {
-      // OR condition — multiple locations
       filter.$or = locations.split(',').map((loc) => ({ location: loc.trim() }));
     } else if (location) {
       filter.location = location;
@@ -57,11 +54,10 @@ router.get('/browse', requireRole('ngo'), async (req, res) => {
 
     const skip = (Number(page) - 1) * Number(limit);
 
-    // Projection — return only required fields
     const projection = 'title quantity expiryTime location status createdBy createdAt';
 
     const items = await FoodListing.find(filter, projection)
-      .sort({ expiryTime: 1 }) // ascending — soonest expiry first
+      .sort({ expiryTime: 1 }) 
       .skip(skip)
       .limit(Number(limit))
       .populate('createdBy', 'name email');
@@ -74,7 +70,7 @@ router.get('/browse', requireRole('ngo'), async (req, res) => {
   }
 });
 
-// READ — Donor's own listings
+// READ - Donor's own listings
 router.get('/mine', requireRole('donor'), async (req, res) => {
   try {
     const listings = await FoodListing.find({ createdBy: req.session.userId })
@@ -85,7 +81,7 @@ router.get('/mine', requireRole('donor'), async (req, res) => {
   }
 });
 
-// READ — Single listing detail
+// READ - Single listing detail
 router.get('/:id', requireAuth, async (req, res) => {
   try {
     const food = await FoodListing.findById(req.params.id).populate('createdBy', 'name email');
@@ -96,7 +92,7 @@ router.get('/:id', requireAuth, async (req, res) => {
   }
 });
 
-// UPDATE — Donor updates a listing (uses $set)
+// UPDATE - Donor updates a listing 
 router.put('/:id', requireRole('donor'), async (req, res) => {
   try {
     const food = await FoodListing.findOne({ _id: req.params.id, createdBy: req.session.userId });
@@ -119,7 +115,7 @@ router.put('/:id', requireRole('donor'), async (req, res) => {
   }
 });
 
-// DELETE — Donor deletes their listing
+// DELETE - Donor deletes their listing
 router.delete('/:id', requireRole('donor'), async (req, res) => {
   try {
     const food = await FoodListing.findOneAndDelete({
@@ -134,7 +130,7 @@ router.delete('/:id', requireRole('donor'), async (req, res) => {
   }
 });
 
-// UPDATE MANY — Mark expired listings (transition available → expired)
+// UPDATE MANY - Mark expired listings (transition available to expired)
 router.post('/maintenance/expire', requireAuth, async (req, res) => {
   try {
     const result = await FoodListing.updateMany(

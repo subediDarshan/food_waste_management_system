@@ -5,7 +5,7 @@ const { requireRole } = require('../middleware/auth');
 
 const router = express.Router();
 
-// Donor dashboard analytics — uses countDocuments() and find() (no aggregation)
+// Donor dashboard analytics
 router.get('/donor', requireRole('donor'), async (req, res) => {
   try {
     const donorId = req.session.userId;

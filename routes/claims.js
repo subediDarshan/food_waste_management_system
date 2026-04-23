@@ -5,7 +5,7 @@ const { requireAuth, requireRole } = require('../middleware/auth');
 
 const router = express.Router();
 
-// CREATE — NGO claims a food listing
+// CREATE - NGO claims a food listing
 router.post('/', requireRole('ngo'), async (req, res) => {
   try {
     const { foodId } = req.body;
@@ -36,7 +36,7 @@ router.post('/', requireRole('ngo'), async (req, res) => {
   }
 });
 
-// READ — NGO sees own claims
+// READ - NGO sees own claims
 router.get('/mine', requireRole('ngo'), async (req, res) => {
   try {
     const claims = await Claim.find({ NGOId: req.session.userId })
@@ -48,7 +48,7 @@ router.get('/mine', requireRole('ngo'), async (req, res) => {
   }
 });
 
-// READ — Donor sees claims on their listings
+// READ - Donor sees claims on their listings
 router.get('/for-my-listings', requireRole('donor'), async (req, res) => {
   try {
     const myListings = await FoodListing.find(
@@ -68,7 +68,7 @@ router.get('/for-my-listings', requireRole('donor'), async (req, res) => {
   }
 });
 
-// UPDATE — Donor approves/rejects a claim (uses $set)
+// UPDATE - Donor approves/rejects a claim 
 router.put('/:id', requireRole('donor'), async (req, res) => {
   try {
     const { claimStatus } = req.body;
