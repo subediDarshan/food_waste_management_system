@@ -16,11 +16,11 @@ const foodListingSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-// Single-field indexes
+
 foodListingSchema.index({ expiryTime: 1 });
 foodListingSchema.index({ location: 1 });
 
-// Compound index on location + expiryTime
+
 foodListingSchema.index({ location: 1, expiryTime: 1 });
 
 module.exports = mongoose.model('FoodListing', foodListingSchema);

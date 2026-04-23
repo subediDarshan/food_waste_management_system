@@ -10,6 +10,6 @@ const userSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-// Unique index on email is created automatically by `unique: true` above.
+
 
 module.exports = mongoose.model('User', userSchema);
