@@ -17,7 +17,7 @@
       </p>
       <div class="filter-bar">
         <div class="field">
-          <label>Locations (comma-separated for multiple)</label>
+          <label>Locations (comma-separated)</label>
           <input type="text" id="fLocations" placeholder="Mumbai, Pune" />
         </div>
         <div class="field">
@@ -27,6 +27,24 @@
         <div class="field">
           <label>Expires within (hours)</label>
           <input type="number" id="fHours" min="1" placeholder="e.g. 24" />
+        </div>
+        
+        <div class="field">
+          <label>Category</label>
+          <select id="fCategory">
+            <option value="">All Categories</option>
+            <option value="Cooked">Cooked</option>
+            <option value="Raw Ingredients">Raw Ingredients</option>
+            <option value="Packaged">Packaged</option>
+            <option value="Other">Other</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Diet</label>
+          <select id="fVeg">
+            <option value="">Any</option>
+            <option value="true">Vegetarian Only</option>
+          </select>
         </div>
         <div class="field">
           <label>Status</label>
@@ -65,11 +83,20 @@
       const hrs = document.getElementById('fHours').value;
       const sts = document.getElementById('fStatuses').value.trim();
       const lim = document.getElementById('fLimit').value;
+      
+      // NEW variables
+      const cat = document.getElementById('fCategory').value;
+      const veg = document.getElementById('fVeg').value;
 
       if (locs) params.set('locations', locs);
       if (qty) params.set('minQuantity', qty);
       if (hrs) params.set('maxExpiryHours', hrs);
       if (sts) params.set('statuses', sts);
+      
+      // NEW params
+      if (cat) params.set('category', cat);
+      if (veg) params.set('isVegetarian', veg);
+
       params.set('limit', lim);
       params.set('page', page);
       return params.toString();
@@ -83,14 +110,27 @@
       if (!data.items.length) {
         r.innerHTML = '<div class="card"><div class="empty">No food matches your filters.</div></div>';
       } else {
+        // Change the table body mapping inside load()
         r.innerHTML = `<table>
           <thead><tr>
-            <th>Title</th><th>Qty</th><th>Location</th><th>Donor</th>
+            <th>Food Item</th><th>Qty</th><th>Location</th><th>Donor</th>
             <th>Expires</th><th>Status</th><th></th>
           </tr></thead>
-          <tbody>${data.items.map((f) => `
+          <tbody>${data.items.map((f) => {
+            // Safely extract embedded details if they exist
+            const vegBadge = f.details && f.details.isVegetarian 
+              ? '<span class="badge" style="background:#dcfce7;color:#166534;margin-right:4px;">Veg</span>' 
+              : '';
+            const catBadge = f.details && f.details.category 
+              ? `<span class="badge" style="background:#e0e7ff;color:#3730a3">${f.details.category}</span>` 
+              : '';
+
+            return `
             <tr>
-              <td><strong>${f.title}</strong></td>
+              <td>
+                <strong>${f.title}</strong>
+                <div style="margin-top: 4px;">${vegBadge}${catBadge}</div>
+              </td>
               <td>${f.quantity}</td>
               <td>${f.location}</td>
               <td>${(f.createdBy && f.createdBy.name) || '—'}</td>
@@ -99,7 +139,8 @@
               <td>${f.status === 'available'
                 ? `<button class="btn-sm" data-claim="${f._id}">Claim</button>`
                 : '—'}</td>
-            </tr>`).join('')}</tbody>
+            </tr>`
+          }).join('')}</tbody>
         </table>`;
 
         r.querySelectorAll('[data-claim]').forEach((b) => {
@@ -139,8 +180,9 @@
 
       document.getElementById('applyBtn').onclick = () => { page = 1; load(); };
       document.getElementById('clearBtn').onclick = () => {
-        ['fLocations', 'fMinQty', 'fHours'].forEach(id => {
-          document.getElementById(id).value = '';
+        ['fLocations', 'fMinQty', 'fHours', 'fCategory', 'fVeg'].forEach(id => {
+          const el = document.getElementById(id);
+          if (el) el.value = '';
         });
         document.getElementById('fStatuses').value = 'available';
         page = 1;

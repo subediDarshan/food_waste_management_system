@@ -8,15 +8,18 @@ const router = express.Router();
 // CREATE - Donor adds a food listing
 router.post('/', requireRole('donor'), async (req, res) => {
   try {
-    const { title, quantity, expiryTime, location } = req.body;
+    const { title, quantity, expiryTime, location, details } = req.body;
+    
     if (!title || !quantity || !expiryTime || !location) {
-      return res.status(400).json({ error: 'All fields are required' });
+      return res.status(400).json({ error: 'All core fields are required' });
     }
+    
     const food = await FoodListing.create({
       title,
       quantity,
       expiryTime: new Date(expiryTime),
       location,
+      details, 
       createdBy: req.session.userId,
       status: 'available'
     });
@@ -29,7 +32,10 @@ router.post('/', requireRole('donor'), async (req, res) => {
 // READ - Browse available food (NGO view) with filters, projection, sorting, pagination
 router.get('/browse', requireRole('ngo'), async (req, res) => {
   try {
-    const { location, locations, minQuantity, maxExpiryHours, statuses, page = 1, limit = 10 } = req.query;
+    const { 
+      location, locations, minQuantity, maxExpiryHours, statuses, page = 1, limit = 10,
+      isVegetarian, category 
+    } = req.query;
 
     const filter = {};
 
@@ -52,9 +58,17 @@ router.get('/browse', requireRole('ngo'), async (req, res) => {
       filter.expiryTime = { $lte: cutoff };
     }
 
-    const skip = (Number(page) - 1) * Number(limit);
+    if (isVegetarian === 'true') {
+      filter['details.isVegetarian'] = true; 
+    }
+    
+    if (category) {
+      filter['details.category'] = category;
+    }
 
-    const projection = 'title quantity expiryTime location status createdBy createdAt';
+    const skip = (Number(page) - 1) * Number(limit);
+    
+    const projection = 'title quantity expiryTime location status details createdBy createdAt';
 
     const items = await FoodListing.find(filter, projection)
       .sort({ expiryTime: 1 }) 

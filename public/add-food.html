@@ -27,6 +27,24 @@
           <label>Pickup Location</label>
           <input type="text" name="location" required placeholder="e.g. Andheri, Mumbai" />
         </div>
+        
+        <div class="field">
+          <label>Category</label>
+          <select name="category">
+            <option value="Cooked">Cooked</option>
+            <option value="Raw Ingredients">Raw Ingredients</option>
+            <option value="Packaged">Packaged</option>
+            <option value="Other">Other</option>
+          </select>
+        </div>
+        <div class="field" style="display: flex; align-items: center; gap: 8px;">
+          <input type="checkbox" name="isVegetarian" id="isVegetarian" style="width: auto;" />
+          <label for="isVegetarian" style="margin: 0;">Is Vegetarian?</label>
+        </div>
+        <div class="field">
+          <label>Allergens (comma-separated)</label>
+          <input type="text" name="allergens" placeholder="e.g. Nuts, Dairy" />
+        </div>
         <button type="submit">Create Listing</button>
         <a href="/my-listings.html" class="btn btn-outline" style="margin-left:8px">Cancel</a>
       </form>
@@ -58,7 +76,15 @@
               title: fd.get('title'),
               quantity: Number(fd.get('quantity')),
               expiryTime: new Date(fd.get('expiryTime')).toISOString(),
-              location: fd.get('location')
+              location: fd.get('location'),
+              // NEW: Construct the embedded document
+              details: {
+                category: fd.get('category'),
+                isVegetarian: fd.get('isVegetarian') === 'on', // Checkbox is 'on' if checked
+                allergens: fd.get('allergens') 
+                  ? fd.get('allergens').split(',').map(a => a.trim()).filter(Boolean) 
+                  : []
+              }
             }
           });
           showAlert(alertBox, 'success', 'Listing created!');
